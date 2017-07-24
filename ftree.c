@@ -82,8 +82,7 @@ char* joinPath(const char *parentPath, const char *childName);
  * Copies file at src_path on client into dest_path on server at host, running
  * on port
  */
-int fcopy_client(char *src_path, char *dest_path, char *host, int port)
-{
+int fcopy_client(char *src_path, char *dest_path, char *host, int port) {
     
     // Setup a connection to the server
     
@@ -126,8 +125,7 @@ int fcopy_client(char *src_path, char *dest_path, char *host, int port)
 /*
  * Frees malloc'd memory for the ftree rooted at root
  */
-int free_ftree (struct TreeNode* root)
-{
+int free_ftree (struct TreeNode* root) {
     if (!root) return -1;
     
     if (root->hash == NULL)
@@ -168,8 +166,7 @@ int free_ftree (struct TreeNode* root)
 /*
  * Return -1 if error, 0 otherwise
  */
-int sync_ftree (struct TreeNode* root, int fd)
-{
+int sync_ftree (struct TreeNode* root, int fd) {
     if (!root) return -1;
     
     char dir_path_in_dest[MAXPATH];
@@ -235,34 +232,26 @@ int sync_file(struct fileinfo* file, int fd, char* path_in_dest)
     int status = server_status(fd);
 
         
-    if (status == MATCH)
-    {
-    } 
-    else if (status == MISMATCH)
-    {
-        if ((int)(file->size) > 0)
-            if (transfer_file(file, fd) == -1)
-            {
+    if (status == MISMATCH) {
+        if ((int)(file->size) > 0) {
+            if (transfer_file(file, fd) == -1) {
                 return -1;    
             }
+        }
         
         int transmit_status = server_status(fd);
         
-        if ( transmit_status == TRANSMIT_OK )
-        {
-        } else if ( transmit_status == TRANSMIT_ERROR ) 
-        {
+        if ( transmit_status == TRANSMIT_ERROR ) {
             printf("TRANSMIT ERROR: %s\n", file->path);
             return -1;
         }
         
     }
-    else if (status == MATCH_ERROR)
-    {
+    else if (status == MATCH_ERROR) {
         printf("MATCH ERROR: %s\n", file->path); 
         return -1;
-    } else
-    {
+    } 
+    else {
         printf("UNKNOWN RESPONSE\n");
         return -1;
     }  
@@ -283,13 +272,10 @@ int transfer_file(struct fileinfo* file, int fd)
     int num_transferred = 0;
 
 
-    if (src_file == NULL)
-    {
+    if (src_file == NULL) {
         perror("fopen");
         return -1;
     }
-    
-    
     
     do 
     {
@@ -298,7 +284,6 @@ int transfer_file(struct fileinfo* file, int fd)
       num_transferred++;
     } 
     while ( num_transferred < file->size );  
-    
     
     fclose(src_file);
     return 1;
@@ -326,8 +311,7 @@ struct TreeNode *generate_ftree(char *fname, char* abs_dest_path)
     root->next = NULL;
     root->fname = NULL;
 
-    if (lstat(fname, &sb) == -1)
-    {
+    if (lstat(fname, &sb) == -1) {
         perror("lstat: ");
         exit(-1);
     }
@@ -337,26 +321,21 @@ struct TreeNode *generate_ftree(char *fname, char* abs_dest_path)
 
     int type = sb.st_mode & S_IFMT;
  
-    if ( type == S_IFDIR )  
-    {
+    if ( type == S_IFDIR ) {
         root->hash = NULL;
         p_dir = opendir(fname);
         
-        if (p_dir == NULL)
-        {
+        if (p_dir == NULL) {
             perror("opendir");
             return NULL;
         }
         
-        while ((entry = readdir(p_dir)) != NULL)
-        {
-            if ( strncmp(entry->d_name, ".", 1) == 0  )
-            {
+        while ((entry = readdir(p_dir)) != NULL) {
+            if ( strncmp(entry->d_name, ".", 1) == 0 ) {
                 continue;
             }
             
-            if (root->contents == NULL)
-            {
+            if (root->contents == NULL) {
                 joined_path = joinPath(fname, entry->d_name);
                 root->contents = generate_ftree(
                     joined_path,
@@ -364,8 +343,7 @@ struct TreeNode *generate_ftree(char *fname, char* abs_dest_path)
                 free(joined_path);
 
             } 
-            else
-            {
+            else {
                 joined_path = joinPath(fname, entry->d_name);
                 struct TreeNode* old_head = root->contents;
                 root->contents = generate_ftree(
@@ -377,13 +355,8 @@ struct TreeNode *generate_ftree(char *fname, char* abs_dest_path)
         }
         closedir(p_dir);
     }
-    else if ( type == S_IFREG )  // regular file
-    {  
+    else if ( type == S_IFREG ) { // regular file  
         addHash(root, fname);
-    }
-    else
-    {     
-        // ignore other file types
     }
     
     return root;
@@ -401,8 +374,7 @@ struct fileinfo node_to_fileinfo(struct TreeNode *file_node)
     f.size = file_node->size;
     strcpy(f.path, file_node->fname);
     
-    if (file_node->hash)
-    {
+    if (file_node->hash) {
         strcpy(f.hash, file_node->hash);
     }
 
@@ -438,8 +410,7 @@ void addProperties(
 void addHash(struct TreeNode* node, const char* filePath) 
 {
     FILE *file = fopen(filePath, "r");
-    if(file)
-    {
+    if(file) {
         node->hash = hash(file);
         fclose(file);    
     }
@@ -485,8 +456,7 @@ void fcopy_server(int port) {
         sizeof(struct sockaddr_in)
         );
         
-    if (bind_res < 0) 
-    {
+    if (bind_res < 0) {
         perror("server: bind");
         close(sock_fd);
         exit(1);
@@ -538,8 +508,7 @@ int handle_file(int fd)
     //struct passed in (use a helper)
     
     struct stat stat_server;
-    if (lstat(file.path, &stat_server) == -1)
-    {
+    if (lstat(file.path, &stat_server) == -1) {
         return directory_file_helper (fd, &file);    
     }
 
@@ -547,8 +516,7 @@ int handle_file(int fd)
     // ex; file to dest or dest to file (same names)
     //then respond to client and throw an error MATCH_ERROR
 
-    else if (diff_types(file.mode, stat_server.st_mode))
-    {
+    else if (diff_types(file.mode, stat_server.st_mode)) {
         send_status(fd, MATCH_ERROR);
         fprintf(stderr, "%s", "MISMATCH in Filetypes\n");
         return -1;
@@ -585,8 +553,7 @@ int handle_file(int fd)
                  update the permissions and send an appropiate response
                 */
                 
-                if (hashResult == 1)
-                {
+                if (hashResult == 1) {
                     //send a match
                     send_status(fd, MATCH);
                     chmod(file.path, file.mode);  
@@ -600,8 +567,7 @@ int handle_file(int fd)
                  an error
                 */
 
-                else
-                {
+                else {
                     //send a response to client that file needs to copied
                     send_status(fd, MISMATCH);
 
@@ -652,14 +618,12 @@ int directory_file_helper (int fd, struct fileinfo* client_file)
          */
         case S_IFDIR: 
         {
-            if (mkdir(client_file->path, client_file->mode) == -1)
-            {
+            if (mkdir(client_file->path, client_file->mode) == -1) {
                 perror("mkdir: ");
                 send_status(fd, MATCH_ERROR); 
                 return -1;
             } 
-            else 
-            {
+            else {
                 send_status(fd, MATCH); 
                 return 0;
             }
@@ -681,9 +645,7 @@ int directory_file_helper (int fd, struct fileinfo* client_file)
             // if hash result is equal to 0, means the copy did not go through 
             // properly, so throw an error here
 
-            if (hashResult == 0)
-            {
-                
+            if (hashResult == 0) {
                 //throw an error here and respond appropiately to client
                 //TRANSMIT_ERROR and then print with the name of the file
                 send_status(fd, TRANSMIT_ERROR);
@@ -749,8 +711,7 @@ void file_creator (int fd, struct fileinfo* client_file)
 {
     FILE *file = fopen(client_file->path, "w");
     
-    if (file == NULL)
-    {
+    if (file == NULL) {
         perror("fopen");
         return;       
     }
@@ -759,8 +720,7 @@ void file_creator (int fd, struct fileinfo* client_file)
     int nbytes = 0;
     char buffer[1];
 
-    while((int)(client_file->size) != bytes_currently_read)
-    {
+    while((int)(client_file->size) != bytes_currently_read) {
         nbytes = read(fd, buffer, 1);
         bytes_currently_read = bytes_currently_read + nbytes;
         fwrite(&buffer, sizeof(char), 1, file);
@@ -781,13 +741,11 @@ int hash_checker (struct fileinfo* client_file)
     hashServer = hash(file_contents_server);
     fclose(file_contents_server);
     
-    if (strncmp (hashServer, client_file->hash, HASH_SIZE) != 0)
-    {
+    if (strncmp (hashServer, client_file->hash, HASH_SIZE) != 0) {
         free(hashServer);
         return 0;
     }
-    else
-    {
+    else {
         free(hashServer);
         return 1;
     }
