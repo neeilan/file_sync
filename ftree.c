@@ -180,9 +180,8 @@ int sync_ftree (struct TreeNode* root, int fd)
            struct fileinfo file = node_to_fileinfo(currentNode);
         
            if (sync_file(&file, fd, regfile_path_in_dest) == -1)
-           {
                return -1;
-           }
+
            free(regfile_path_in_dest);
         }
       
@@ -214,9 +213,9 @@ int sync_file(struct fileinfo* file, int fd, char* path_in_dest)
         
     if (status == MISMATCH) {
         if ((int)(file->size) > 0) {
-            if (transfer_file(file, fd) == -1) {
-                return -1;    
-            }
+            int transfer_result = transfer_file(file, fd);
+            if (transfer_result == -1)
+                return -1;
         }
         
         int transmit_status = server_status(fd);
@@ -297,7 +296,7 @@ struct TreeNode *generate_ftree(char *fname, char* abs_dest_path)
 
     int type = sb.st_mode & S_IFMT;
  
-    if ( type == S_IFDIR ) {
+    if (type == S_IFDIR) {
         root->hash = NULL;
         p_dir = opendir(fname);
         
@@ -494,18 +493,15 @@ int handle_file(int fd)
             {
                 int hash_match = check_hash(&file);
 
-                if (hash_match == 1)
-                {
+                if (hash_match == 1) {
                     send_status(fd, MATCH);
                     chmod(file.path, file.mode);  
                     return 0;
                 }
-                else 
-                {
+                else {
                     //send a response to client that file needs to copied
                     send_status(fd, MISMATCH);
 
-                    // create file nad update permissions
                     create_file(fd, &file);
                     chmod(file.path, file.mode);
 
@@ -513,16 +509,14 @@ int handle_file(int fd)
                     if (!hash_match) {
                         send_status(fd, TRANSMIT_ERROR);
                         return -1;
-                    }
-                    else {
+                    } else {
                         send_status(fd, TRANSMIT_OK);
                         return 0;
                     }
                 }
                 break;
             }
-            default :
-            {
+            default : {
                 printf("Unknown file: %s\n", file.path);
                 return -1;
             }
@@ -647,20 +641,18 @@ void create_file (int fd, struct fileinfo* client_file)
  */
 int check_hash (struct fileinfo* client_file)
 {
-    char *hashServer;
+    char *server_file_hash;
     FILE *file_contents_server = fopen(client_file->path, "r");
-    hashServer = hash(file_contents_server);
+    server_file_hash = hash(file_contents_server);
     fclose(file_contents_server);
     
-    if (strncmp (hashServer, client_file->hash, HASH_SIZE) != 0) {
-        free(hashServer);
+    if (strncmp (server_file_hash, client_file->hash, HASH_SIZE) != 0) {
+        free(server_file_hash);
         return 0;
-    }
-    else {
-        free(hashServer);
+    } else {
+        free(server_file_hash);
         return 1;
     }
-
 }
 
 
@@ -680,15 +672,15 @@ int diff_types(int mode_1, int mode_2)
 /*
  *  Returns a new string consisting of parent and child paths joined with /
  */
-char* join_path(const char *parentPath, const char *childName) 
+char* join_path(const char *parent_path, const char *child_name) 
 {
     char *result = malloc(
-        sizeof(char) * (strlen(parentPath) + strlen(childName) + 2)
+        sizeof(char) * (strlen(parent_path) + strlen(child_name) + 2)
         ); //+2 for the zero-terminator and /
         
-    strcpy(result, parentPath);
+    strcpy(result, parent_path);
     strcat(result, "/");
-    strcat(result, childName);
+    strcat(result, child_name);
     return result;
 }
 
