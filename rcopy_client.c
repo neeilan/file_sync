@@ -7,8 +7,6 @@
 
 int main(int argc, char **argv) {
     
-
-    
     if (argc != 4) {
         printf("Usage:\n\trcopy_client SRC DEST HOST\n");
         return 0;
