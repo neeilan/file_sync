@@ -131,22 +131,21 @@ int free_ftree (struct TreeNode* root) {
         free(root->abs_dest_path);
     }
 
-    struct TreeNode* currentNode = root->contents;
-    struct TreeNode* prevNode; // for memory cleanup
+    struct TreeNode* curr_node = root->contents;
+    struct TreeNode* prev_node;           // for memory deallocation
     
-    while (currentNode != NULL) {
-        prevNode = currentNode;
-        if (currentNode->hash == NULL) { 
-            // directory
-            free_ftree(currentNode);
+    while (curr_node != NULL) {
+        prev_node = curr_node;
+        if (curr_node->hash == NULL) {    // directory
+            free_ftree(curr_node);
         } else {
-          free(currentNode->fname);
-          free(currentNode->abs_dest_path);
-          free(currentNode->hash);    
+          free(curr_node->fname);
+          free(curr_node->abs_dest_path);
+          free(curr_node->hash);    
         }
       
-      currentNode = currentNode->next;
-      free(prevNode);
+      curr_node = curr_node->next;
+      free(prev_node);
     }
 
     return 0;
@@ -168,16 +167,16 @@ int sync_ftree (struct TreeNode* root, int fd)
     if (sync_file (&file_or_dir, fd, dir_path_in_dest) == -1)
         return -1;
 
-    struct TreeNode* currentNode = root->contents;
+    struct TreeNode* curr_node = root->contents;
 
-    while (currentNode != NULL) {
-        if (currentNode->hash == NULL) { 
+    while (curr_node != NULL) {
+        if (curr_node->hash == NULL) { 
             // directory
-            sync_ftree(currentNode, fd);
+            sync_ftree(curr_node, fd);
         } else {
            char* regfile_path_in_dest = calloc(MAXPATH, sizeof(char));
-           strcpy(regfile_path_in_dest, currentNode->abs_dest_path);  
-           struct fileinfo file = node_to_fileinfo(currentNode);
+           strcpy(regfile_path_in_dest, curr_node->abs_dest_path);  
+           struct fileinfo file = node_to_fileinfo(curr_node);
         
            if (sync_file(&file, fd, regfile_path_in_dest) == -1)
                return -1;
@@ -185,7 +184,7 @@ int sync_ftree (struct TreeNode* root, int fd)
            free(regfile_path_in_dest);
         }
       
-      currentNode = currentNode->next;
+      curr_node = curr_node->next;
     } 
    
     return 0;
@@ -201,8 +200,7 @@ int sync_file(struct fileinfo* file, int fd, char* path_in_dest)
     unsigned long nmode = htonl(file->mode);
     unsigned long nsize = htonl(file->size);
     
-    // We want to write the path in dest, not local path
-    
+    // Want to write the path in dest, not local path
     write(fd, path_in_dest, sizeof(char) * MAXPATH);
     write(fd, &nmode, sizeof(mode_t));
     write(fd, (file->hash), sizeof(char) * HASH_SIZE);
@@ -210,7 +208,6 @@ int sync_file(struct fileinfo* file, int fd, char* path_in_dest)
     
     int status = server_status(fd);
 
-        
     if (status == MISMATCH) {
         if ((int)(file->size) > 0) {
             int transfer_result = transfer_file(file, fd);
@@ -225,12 +222,10 @@ int sync_file(struct fileinfo* file, int fd, char* path_in_dest)
             return -1;
         }
         
-    }
-    else if (status == MATCH_ERROR) {
+    } else if (status == MATCH_ERROR) {
         printf("MATCH ERROR: %s\n", file->path); 
         return -1;
-    } 
-    else {
+    } else {
         printf("UNKNOWN RESPONSE\n");
         return -1;
     }  
@@ -247,7 +242,6 @@ int transfer_file(struct fileinfo* file, int fd)
     FILE *src_file = fopen(file->path, "r");
     char c;
     int num_transferred = 0;
-
 
     if (src_file == NULL) {
         perror("fopen");
@@ -306,7 +300,7 @@ struct TreeNode *generate_ftree(char *fname, char* abs_dest_path)
         }
         
         while ((entry = readdir(p_dir)) != NULL) {
-            if ( strncmp(entry->d_name, ".", 1) == 0 )
+            if (strncmp(entry->d_name, ".", 1) == 0)
                 continue;
 
             joined_path = join_path(fname, entry->d_name);
@@ -316,8 +310,7 @@ struct TreeNode *generate_ftree(char *fname, char* abs_dest_path)
                     root->abs_dest_path);
                 free(joined_path);
 
-            } 
-            else {
+            } else {
                 struct TreeNode* old_head = root->contents;
                 root->contents = generate_ftree(joined_path, root->abs_dest_path);
                 free(joined_path);   
@@ -325,8 +318,7 @@ struct TreeNode *generate_ftree(char *fname, char* abs_dest_path)
             }
         }
         closedir(p_dir);
-    }
-    else if ( type == S_IFREG ) { // regular file  
+    } else if ( type == S_IFREG ) { // regular file  
         add_hash(root, fname);
     }
     
@@ -345,9 +337,8 @@ struct fileinfo node_to_fileinfo(struct TreeNode *file_node)
     f.size = file_node->size;
     strcpy(f.path, file_node->fname);
     
-    if (file_node->hash) {
+    if (file_node->hash)
         strcpy(f.hash, file_node->hash);
-    }
 
     return f;
 }
@@ -416,9 +407,9 @@ void fcopy_server(int port)
     // Bind socket to an address
     struct sockaddr_in server;
     server.sin_family = AF_INET;
-    server.sin_port = htons(port);  // Note use of htons here
+    server.sin_port = htons(port);        // Note use of htons here
     server.sin_addr.s_addr = INADDR_ANY;
-    memset(&server.sin_zero, 0, 8);  // Initialize sin_zero to 0
+    memset(&server.sin_zero, 0, 8);       // Initialize sin_zero to 0
 
     int bind_res = bind(
         sock_fd, 
@@ -443,7 +434,6 @@ void fcopy_server(int port)
     }
 
     while (1) {
-        // Accept a new connection        
         client_fd = accept(
             sock_fd, 
             (struct sockaddr *) &peer, 
@@ -497,8 +487,7 @@ int handle_file(int fd)
                     send_status(fd, MATCH);
                     chmod(file.path, file.mode);  
                     return 0;
-                }
-                else {
+                } else {
                     //send a response to client that file needs to copied
                     send_status(fd, MISMATCH);
 
@@ -543,8 +532,7 @@ int directory_file_helper (int fd, struct fileinfo* client_file)
                 perror("mkdir: ");
                 send_status(fd, MATCH_ERROR); 
                 return -1;
-            } 
-            else {
+            } else {
                 send_status(fd, MATCH); 
                 return 0;
             }
@@ -566,8 +554,7 @@ int directory_file_helper (int fd, struct fileinfo* client_file)
                 char *problemFile = basename(strdup(client_file->path));
                 printf("TRANSMIT ERROR: %s\n", problemFile); 
                 return -1;
-            }
-            else {
+            } else {
                 send_status(fd, TRANSMIT_OK);
                 return 0;
             }
