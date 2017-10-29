@@ -3,8 +3,6 @@
 #include <string.h>
 #include "ftree.h"
 
-
-
 int main(int argc, char **argv) {
     
     if (argc != 4) {
